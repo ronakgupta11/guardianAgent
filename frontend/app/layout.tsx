@@ -8,6 +8,7 @@ import { DemoModeProvider, DemoBanner } from "@/providers/demo-mode"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Suspense } from "react"
+import { Providers } from "@/components/provider"
 
 export const metadata: Metadata = {
   title: "v0 App",
@@ -24,12 +25,14 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>
+          <Providers>
           <DemoModeProvider>
             <Header />
             <DemoBanner />
             <main className="min-h-[calc(100dvh-144px)]">{children}</main>
             <Footer />
           </DemoModeProvider>
+          </Providers>
         </Suspense>
         <Analytics />
       </body>
