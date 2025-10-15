@@ -5,8 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { HealthRing } from "@/components/health-ring"
 import { motion } from "framer-motion"
+import { Login } from "@/components/Login"
+import { useJwtContext } from "@lit-protocol/vincent-app-sdk/react"
 
 export default function HomePage() {
+  const { authInfo } = useJwtContext();
+
+  if (!authInfo) {
+    return <Login />
+  }
+
   return (
     <div className="px-6 md:px-10">
       <section className="mx-auto max-w-6xl py-12 md:py-16">

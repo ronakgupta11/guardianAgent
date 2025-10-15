@@ -1,4 +1,4 @@
-import type React from "react"
+import React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
@@ -9,6 +9,10 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Suspense } from "react"
 import { Providers } from "@/components/provider"
+// import { JwtProvider } from '@lit-protocol/vincent-app-sdk/react';
+// import { env } from '@/lib/env';
+
+// Environment variables are accessed through the env object
 
 export const metadata: Metadata = {
   title: "v0 App",
@@ -22,6 +26,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>
@@ -33,9 +38,11 @@ export default function RootLayout({
             <Footer />
           </DemoModeProvider>
           </Providers>
+
         </Suspense>
         <Analytics />
       </body>
     </html>
+
   )
 }
