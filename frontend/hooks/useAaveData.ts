@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 import { useAccount } from 'wagmi';
-import { useUserSupplies, useUserBorrows, useUserMarketState, evmAddress, useAaveMarkets,chainId } from '@aave/react';
+import { useUserSupplies, useUserBorrows, useUserMarketState, evmAddress, useAaveMarkets,chainId, useAaveChains, ChainsFilter } from '@aave/react';
 import { formatUnits } from 'viem';
+import { base, sepolia } from 'viem/chains';
 
 export interface AavePosition {
   id: string;
@@ -41,11 +42,13 @@ export interface AavePortfolioSummary {
 
 export const useAaveData = () => {
   const { address, isConnected } = useAccount();
+  const { data: chains } = useAaveChains({filter: ChainsFilter.TESTNET_ONLY});
+  console.log('chains', chains);
   
   const { data:markets, loading:marketsLoading, error:marketsError } = useAaveMarkets({
-    chainIds: [chainId(1)],
+    chainIds: chains?.map(c => chainId(c.chainId)) || [],
   });
-  
+  console.log('markets', markets);
   // Only fetch user data if we have a valid address and markets
   const hasValidAddress = address && address.length > 0;
   const hasValidMarkets = markets && markets.length > 0;
@@ -70,7 +73,7 @@ export const useAaveData = () => {
       markets: [],
     }
   );
-  
+  console.log('supplies', supplies);
   // Fetch user borrows - only if we have valid data
   const { data: borrows, loading: borrowsLoading } = useUserBorrows(
     hasValidAddress && hasValidMarkets ? {
@@ -81,20 +84,20 @@ export const useAaveData = () => {
       markets: [],
     }
   );
-  
+  console.log('borrows', borrows);
   // Fetch market state data for prices - only if we have valid data
   const { data: marketData, loading: marketLoading } = useUserMarketState(
     hasValidAddress && hasValidMarkets ? {
-      chainId: chainId(1),
+      chainId: chainId(84532),
       user: evmAddress(address),
       market: evmAddress(markets[0].address),
-    } : {
-      chainId: chainId(1),
+    } : {   
+      chainId: chainId(84532),
       user: evmAddress('0x0000000000000000000000000000000000000000'),
       market: evmAddress('0x0000000000000000000000000000000000000000'),
     }
   );
-
+  console.log('marketData', marketData);
   const isLoading = suppliesLoading || borrowsLoading || marketLoading || marketsLoading;
 
   const portfolioData = useMemo((): AavePortfolioSummary => {
@@ -169,8 +172,8 @@ export const useAaveData = () => {
     if (collateralTokens.length > 0 || borrowedTokens.length > 0) {
       const position: AavePosition = {
         id: `aave-${address}`,
-        chainId: 1, // Ethereum mainnet
-        chainName: 'Ethereum',
+        chainId: 84532, // base sepolia
+        chainName: 'Base Sepolia',
         protocol: 'Aave',
         collateralTokens,
         borrowedTokens,
