@@ -35,8 +35,14 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 @router.post("/login")
-def login_user(wallet_address: str, db: Session = Depends(get_db)):
+def login_user(request: dict, db: Session = Depends(get_db)):
     """Login user with wallet address"""
+    wallet_address = request.get("wallet_address")
+    if not wallet_address:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="wallet_address is required"
+        )
     user = db.query(User).filter(User.wallet_address == wallet_address.lower()).first()
     
     if not user:

@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { authInfo } = useJwtContext();
   const { loginUser, registerUser, getCurrentUser, verifyToken } = useBackend();
 
-  const isAuthenticated = !!user && !!authInfo?.jwt;
+  const isAuthenticated = !!user;
 
   // Check authentication status on mount and when authInfo changes
   useEffect(() => {
@@ -68,7 +68,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(null);
           }
         } else {
-          setUser(null);
+          // If no JWT token, check if we have a user in localStorage as fallback
+          if (typeof window !== 'undefined') {
+            const storedUser = localStorage.getItem('guardian_user');
+            if (storedUser) {
+              try {
+                setUser(JSON.parse(storedUser));
+              } catch (e) {
+                localStorage.removeItem('guardian_user');
+                setUser(null);
+              }
+            } else {
+              setUser(null);
+            }
+          } else {
+            setUser(null);
+          }
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -95,6 +110,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.access_token) {
         // The JWT will be handled by Vincent SDK
         setUser(response.user);
+        // Also store user in localStorage as fallback
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('guardian_user', JSON.stringify(response.user));
+        }
       }
     } catch (error) {
       console.error('Login failed:', error);
@@ -109,6 +128,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       const newUser = await registerUser(userData);
       setUser(newUser);
+      // Store user in localStorage as fallback
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('guardian_user', JSON.stringify(newUser));
+      }
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -119,6 +142,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('guardian_user');
+    }
     // Vincent SDK will handle JWT cleanup
   };
 

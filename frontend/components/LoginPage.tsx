@@ -36,9 +36,24 @@ export const LoginPage: React.FC = () => {
     email: '',
   });
 
-  const handleWalletConnect = () => {
+  const handleWalletConnect = async () => {
     if (isConnected && address) {
-      setStep('details');
+      setIsLoading(true);
+      try {
+        // Try to login first (user might already exist)
+        await login(address);
+        toast({
+          title: "Welcome back!",
+          description: "Successfully logged in to your account.",
+        });
+        router.push('/dashboard');
+      } catch (error: any) {
+        // If login fails, user doesn't exist, proceed with registration
+        console.log('User not found, proceeding with registration:', error.message);
+        setStep('details');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -48,21 +63,7 @@ export const LoginPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Try to login first (user might already exist)
-      try {
-        await login(address);
-        toast({
-          title: "Welcome back!",
-          description: "Successfully logged in to your account.",
-        });
-        router.push('/dashboard');
-        return;
-      } catch (loginError: any) {
-        // If login fails, user doesn't exist, proceed with registration
-        console.log('User not found, proceeding with registration:', loginError.message);
-      }
-
-      // Register new user
+      // Register new user (we already know they don't exist from handleWalletConnect)
       await register({
         name: formData.name,
         email: formData.email,
@@ -135,8 +136,8 @@ export const LoginPage: React.FC = () => {
                 Welcome to GuardianAgent
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-2">
-                {step === 'wallet' && "Connect your wallet to get started"}
-                {step === 'details' && "Tell us a bit about yourself"}
+                {step === 'wallet' && "Connect your wallet to login or create an account"}
+                {step === 'details' && "Create your account - we need some basic information"}
                 {step === 'vincent' && "Connect with Vincent for enhanced security"}
               </CardDescription>
             </div>
@@ -177,7 +178,7 @@ export const LoginPage: React.FC = () => {
                   <Wallet className="w-12 h-12 text-primary mx-auto" />
                   <h3 className="text-lg font-semibold">Connect Your Wallet</h3>
                   <p className="text-sm text-muted-foreground">
-                    Connect your EVM wallet to access your DeFi positions
+                    Connect your EVM wallet to login or create a new account
                   </p>
                 </div>
 
@@ -202,16 +203,16 @@ export const LoginPage: React.FC = () => {
                   <Button 
                     onClick={handleWalletConnect}
                     className="w-full"
-                    disabled={authLoading}
+                    disabled={isLoading}
                   >
-                    {authLoading ? (
+                    {isLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Checking account...
                       </>
                     ) : (
                       <>
-                        Continue
+                        Login or Create Account
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </>
                     )}
@@ -232,7 +233,7 @@ export const LoginPage: React.FC = () => {
                   <User className="w-12 h-12 text-primary mx-auto" />
                   <h3 className="text-lg font-semibold">Create Your Account</h3>
                   <p className="text-sm text-muted-foreground">
-                    We need some basic information to set up your profile
+                    Welcome! We need some basic information to set up your new account
                   </p>
                 </div>
 
