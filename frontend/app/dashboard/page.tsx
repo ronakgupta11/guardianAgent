@@ -20,12 +20,21 @@ import {
   AlertTriangle
 } from "lucide-react"
 
-const fetcher = (url: string) => fetch(url, {
-  headers: {
-    'Authorization': `Bearer ${localStorage.getItem('jwt')}`,
+const fetcher = (url: string) => {
+  const headers: HeadersInit = {
     'Content-Type': 'application/json',
+  };
+  
+  // Only add Authorization header if we're on client side and have a token
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('jwt');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
-}).then((r) => r.json())
+  
+  return fetch(url, { headers }).then((r) => r.json());
+}
 
 function DashboardContent() {
   const { data, error, isLoading, mutate } = useSWR("/api/v1/positions/", fetcher)

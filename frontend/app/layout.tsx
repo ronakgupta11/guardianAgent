@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
 import { Providers } from "@/components/provider"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { BackendStatus } from "@/components/BackendStatus"
 // import { JwtProvider } from '@lit-protocol/vincent-app-sdk/react';
 // import { env } from '@/lib/env';
 
@@ -33,14 +34,16 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>
           <Providers>
-            <AuthProvider>
-              <DemoModeProvider>
-                <Header />
-                <DemoBanner />
-                <main className="min-h-[calc(100dvh-144px)]">{children}</main>
-                <Footer />
-              </DemoModeProvider>
-            </AuthProvider>
+            <BackendStatus>
+              <AuthProvider>
+                <DemoModeProvider>
+                  <Header />
+                  <DemoBanner />
+                  <main className="min-h-[calc(100dvh-144px)]">{children}</main>
+                  <Footer />
+                </DemoModeProvider>
+              </AuthProvider>
+            </BackendStatus>
           </Providers>
         </Suspense>
         <Toaster />

@@ -57,9 +57,9 @@ export const LoginPage: React.FC = () => {
         });
         router.push('/dashboard');
         return;
-      } catch (loginError) {
+      } catch (loginError: any) {
         // If login fails, user doesn't exist, proceed with registration
-        console.log('User not found, proceeding with registration');
+        console.log('User not found, proceeding with registration:', loginError.message);
       }
 
       // Register new user

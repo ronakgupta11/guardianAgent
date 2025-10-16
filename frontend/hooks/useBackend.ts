@@ -27,15 +27,13 @@ export const useBackend = () => {
 
   const sendRequest = useCallback(
     async <T>(endpoint: string, method: HTTPMethod, body?: unknown): Promise<T> => {
-      if (!authInfo?.jwt) {
-        throw new Error('No JWT to query backend');
-      }
-
       const headers: HeadersInit = {
-        Authorization: `Bearer ${authInfo.jwt}`,
+        'Content-Type': 'application/json',
       };
-      if (body != null) {
-        headers['Content-Type'] = 'application/json';
+      
+      // Add JWT token if available
+      if (authInfo?.jwt) {
+        headers.Authorization = `Bearer ${authInfo.jwt}`;
       }
 
       const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}${endpoint}`, {
@@ -45,36 +43,122 @@ export const useBackend = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
-      const json = (await response.json()) as { data: T; success: boolean };
-
-      if (!json.success) {
-        throw new Error(`Backend error: ${json.data}`);
-      }
-
-      return json.data;
+      return response.json() as T;
     },
     [authInfo]
   );
 
-  // Add your specific API methods here
-  const createSomething = useCallback(
-    async (data: any) => {
-      return sendRequest('/api/endpoint', 'POST', data);
+  // Authentication methods
+  const registerUser = useCallback(
+    async (userData: { name: string; email: string; wallet_address: string; vincent_id?: string }) => {
+      return sendRequest('/api/v1/auth/register', 'POST', userData);
     },
     [sendRequest]
   );
 
-  const getSomething = useCallback(async () => {
-    return sendRequest('/api/endpoint', 'GET');
-  }, [sendRequest]);
+  const loginUser = useCallback(
+    async (walletAddress: string) => {
+      return sendRequest('/api/v1/auth/login', 'POST', { wallet_address: walletAddress });
+    },
+    [sendRequest]
+  );
+
+  const verifyToken = useCallback(
+    async () => {
+      return sendRequest('/api/v1/auth/verify-token', 'POST');
+    },
+    [sendRequest]
+  );
+
+  // User methods
+  const getCurrentUser = useCallback(
+    async () => {
+      return sendRequest('/api/v1/users/me', 'GET');
+    },
+    [sendRequest]
+  );
+
+  const updateUser = useCallback(
+    async (userData: { name?: string; email?: string; vincent_id?: string }) => {
+      return sendRequest('/api/v1/users/me', 'PUT', userData);
+    },
+    [sendRequest]
+  );
+
+  // Position methods
+  const getPositions = useCallback(
+    async () => {
+      return sendRequest('/api/v1/positions/', 'GET');
+    },
+    [sendRequest]
+  );
+
+  const discoverPositions = useCallback(
+    async () => {
+      return sendRequest('/api/v1/positions/discover', 'POST');
+    },
+    [sendRequest]
+  );
+
+  const getPosition = useCallback(
+    async (positionId: number) => {
+      return sendRequest(`/api/v1/positions/${positionId}`, 'GET');
+    },
+    [sendRequest]
+  );
+
+  // Alert methods
+  const getAlerts = useCallback(
+    async (resolved?: boolean, severity?: string) => {
+      const params = new URLSearchParams();
+      if (resolved !== undefined) params.append('resolved', resolved.toString());
+      if (severity) params.append('severity', severity);
+      
+      const queryString = params.toString();
+      const endpoint = `/api/v1/alerts/${queryString ? `?${queryString}` : ''}`;
+      return sendRequest(endpoint, 'GET');
+    },
+    [sendRequest]
+  );
+
+  const getActiveAlerts = useCallback(
+    async () => {
+      return sendRequest('/api/v1/alerts/active', 'GET');
+    },
+    [sendRequest]
+  );
+
+  const resolveAlert = useCallback(
+    async (alertId: number) => {
+      return sendRequest(`/api/v1/alerts/${alertId}/resolve`, 'POST');
+    },
+    [sendRequest]
+  );
 
   return {
-    createSomething,
-    getSomething,
+    // Authentication
+    registerUser,
+    loginUser,
+    verifyToken,
     getJwt,
     authInfo,
+    
+    // Users
+    getCurrentUser,
+    updateUser,
+    
+    // Positions
+    getPositions,
+    discoverPositions,
+    getPosition,
+    
+    // Alerts
+    getAlerts,
+    getActiveAlerts,
+    resolveAlert,
   };
 };

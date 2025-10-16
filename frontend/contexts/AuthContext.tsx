@@ -56,10 +56,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         if (authInfo?.jwt) {
           // Verify token and get user info
-          const response = await verifyToken();
-          if (response.valid && response.user) {
-            setUser(response.user);
-          } else {
+          try {
+            const response = await verifyToken();
+            if (response.valid && response.user) {
+              setUser(response.user);
+            } else {
+              setUser(null);
+            }
+          } catch (verifyError) {
+            console.log('Token verification failed, user not authenticated');
             setUser(null);
           }
         } else {
@@ -73,7 +78,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    checkAuth();
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      checkAuth();
+    } else {
+      setIsLoading(false);
+    }
   }, [authInfo?.jwt, verifyToken]);
 
   const login = async (walletAddress: string) => {
