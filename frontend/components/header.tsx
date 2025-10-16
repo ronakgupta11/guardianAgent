@@ -4,32 +4,55 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { WalletChip } from "@/components/wallet-chip"
 import { useDemoMode } from "@/providers/demo-mode"
+import { Bot, Brain, Shield } from "lucide-react"
+import { motion } from "framer-motion"
 
 export function Header() {
   const { demo, toggleDemo } = useDemoMode()
   return (
-    <header className="border-b bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="mx-auto max-w-6xl px-6 md:px-10 h-16 flex items-center justify-between">
-        <Link href="/" className="font-semibold text-lg">
-          GuardianAgent
+    <header className="border-b border-primary/20 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/80 relative">
+      {/* AI Scan Line Effect */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
+      
+      <div className="mx-auto max-w-7xl px-6 md:px-10 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 font-bold text-xl group">
+          <motion.div
+            whileHover={{ rotate: 360 }}
+            transition={{ duration: 0.5 }}
+            className="p-1 rounded-full bg-gradient-to-r from-primary to-accent"
+          >
+            <Bot className="w-6 h-6 text-primary-foreground" />
+          </motion.div>
+          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            GuardianAgent
+          </span>
         </Link>
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+        
+        <nav className="hidden md:flex items-center gap-8">
+          <Link href="/dashboard" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group">
+            <Shield className="w-4 h-4 group-hover:scale-110 transition-transform" />
             Dashboard
           </Link>
-          <Link href="/ai" className="text-sm text-muted-foreground hover:text-foreground">
-            AI Chat
+          <Link href="/ai" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group">
+            <Brain className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            AI Assistant
           </Link>
-          <Link href="/profile" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/profile" className="text-sm text-muted-foreground hover:text-primary transition-colors">
             Profile
           </Link>
-          <Link href="/settings" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/settings" className="text-sm text-muted-foreground hover:text-primary transition-colors">
             Settings
           </Link>
         </nav>
-        <div className="flex items-center gap-2">
-          <Button variant={demo ? "default" : "outline"} onClick={toggleDemo} aria-pressed={demo}>
-            {demo ? "Demo On" : "Demo Off"}
+        
+        <div className="flex items-center gap-3">
+          <Button 
+            variant={demo ? "default" : "outline"} 
+            onClick={toggleDemo} 
+            aria-pressed={demo}
+            className={demo ? "web3-gradient text-primary-foreground" : "border-primary/50 text-primary hover:bg-primary/10"}
+          >
+            {demo ? "Demo Active" : "Demo Mode"}
           </Button>
           <WalletChip />
         </div>

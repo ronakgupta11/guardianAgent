@@ -7,6 +7,7 @@ import "./globals.css"
 import { DemoModeProvider, DemoBanner } from "@/providers/demo-mode"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
 import { Providers } from "@/components/provider"
 // import { JwtProvider } from '@lit-protocol/vincent-app-sdk/react';
@@ -40,6 +41,7 @@ export default function RootLayout({
           </Providers>
 
         </Suspense>
+        <Toaster />
         <Analytics />
       </body>
     </html>
