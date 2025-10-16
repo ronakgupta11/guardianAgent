@@ -7,9 +7,23 @@ import { HealthRing } from "@/components/health-ring"
 import { motion } from "framer-motion"
 import { Login } from "@/components/Login"
 import { useJwtContext } from "@lit-protocol/vincent-app-sdk/react"
+import { useEffect } from 'react';
+import { useAccount } from 'wagmi'; // any wallet lib works
+import { BridgeButton, useNexus } from '@avail-project/nexus-widgets';
 
 export default function HomePage() {
   const { authInfo } = useJwtContext();
+  
+
+
+  const { connector, isConnected } = useAccount();
+  const { setProvider } = useNexus();
+
+  useEffect(() => {
+    if (isConnected && connector?.getProvider) {
+      connector.getProvider().then((provider: any) => setProvider(provider));
+    }
+  }, [isConnected, connector, setProvider]);
 
   if (!authInfo) {
     return <Login />
@@ -36,6 +50,7 @@ export default function HomePage() {
               <Button asChild className="bg-primary text-primary-foreground hover:opacity-90">
                 <Link href="/dashboard">Open Dashboard</Link>
               </Button>
+
               <Button asChild variant="secondary">
                 <Link href="/ai">Open AI Chat</Link>
               </Button>
@@ -62,6 +77,13 @@ export default function HomePage() {
 
       <section id="features" className="mx-auto max-w-6xl py-10">
         <div className="grid md:grid-cols-3 gap-6">
+        <BridgeButton prefill={{ chainId: 137, token: 'USDC', amount: '100' }}>
+  {({ onClick, isLoading }) => (
+    <button onClick={onClick} disabled={isLoading}>
+      {isLoading ? 'Bridging…' : 'Bridge 100 USDC → Polygon'}
+    </button>
+  )}
+</BridgeButton>
           <Feature
             title="Monitor Risk"
             desc="Connect a wallet or use demo mode to view tracked positions and risk scores."
@@ -118,6 +140,7 @@ function Feature({ title, desc }: { title: string; desc: string }) {
     </Card>
   )
 }
+
 
 function Step({ n, title, desc }: { n: number; title: string; desc: string }) {
   return (
