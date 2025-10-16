@@ -55,16 +55,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       try {
         if (authInfo?.jwt) {
-          // Verify token and get user info
-          try {
-            const response = await verifyToken();
-            if (response.valid && response.user) {
-              setUser(response.user);
+          // For Vincent JWTs, we don't need to verify with backend
+          // The JWT itself is proof of authentication
+          // Just check if we have a stored user from registration
+          if (typeof window !== 'undefined') {
+            const storedUser = localStorage.getItem('guardian_user');
+            if (storedUser) {
+              try {
+                setUser(JSON.parse(storedUser));
+              } catch (e) {
+                localStorage.removeItem('guardian_user');
+                setUser(null);
+              }
             } else {
               setUser(null);
             }
-          } catch (verifyError) {
-            console.log('Token verification failed, user not authenticated');
+          } else {
             setUser(null);
           }
         } else {

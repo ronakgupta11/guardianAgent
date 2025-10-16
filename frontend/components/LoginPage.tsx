@@ -61,51 +61,35 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     if (!address) return;
 
-    setIsLoading(true);
-    try {
-      // Register new user (we already know they don't exist from handleWalletConnect)
-      await register({
+    // Store user data temporarily for after Vincent connection
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pending_user_data', JSON.stringify({
         name: formData.name,
         email: formData.email,
         wallet_address: address,
-      });
-
-      toast({
-        title: "Account created!",
-        description: "Your account has been successfully created.",
-      });
-
-      setStep('vincent');
-    } catch (error: any) {
-      console.error('Registration failed:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create account. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      }));
     }
+
+    toast({
+      title: "Ready for Vincent!",
+      description: "Now connect with Vincent to complete your registration.",
+    });
+
+    setStep('vincent');
   };
 
   const handleVincentConnect = async () => {
     setIsLoading(true);
     try {
+      // Redirect to Vincent - the callback will handle user creation
       await getJwt();
-      toast({
-        title: "Vincent connected!",
-        description: "You're now ready to use GuardianAgent.",
-      });
-      router.push('/dashboard');
     } catch (error: any) {
       console.error('Vincent connection failed:', error);
       toast({
         title: "Connection Error",
-        description: "Failed to connect with Vincent. You can still use the app.",
+        description: "Failed to connect with Vincent. Please try again.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if Vincent fails
-      router.push('/dashboard');
     } finally {
       setIsLoading(false);
     }
@@ -306,7 +290,7 @@ export const LoginPage: React.FC = () => {
                   <Shield className="w-12 h-12 text-primary mx-auto" />
                   <h3 className="text-lg font-semibold">Connect with Vincent</h3>
                   <p className="text-sm text-muted-foreground">
-                    Vincent provides enhanced security and non-custodial authentication
+                    Vincent authentication is required to complete your registration
                   </p>
                 </div>
 
@@ -346,13 +330,11 @@ export const LoginPage: React.FC = () => {
                   )}
                 </Button>
 
-                <Button 
-                  variant="outline" 
-                  onClick={() => router.push('/dashboard')}
-                  className="w-full"
-                >
-                  Skip for now
-                </Button>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Vincent authentication is required to continue
+                  </p>
+                </div>
               </motion.div>
             )}
           </CardContent>

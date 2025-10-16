@@ -21,7 +21,9 @@ export const useBackend = () => {
 
   const getJwt = useCallback(() => {
     vincentWebAuthClient.redirectToConnectPage({
-      redirectUri: env.NEXT_PUBLIC_REDIRECT_URI,
+      // Redirect to dedicated callback route so we can finalize auth
+      // per Vincent docs: redirectToConnectPage -> app gets JWT in URL
+      redirectUri: env.NEXT_PUBLIC_REDIRECT_URI || `${window.location.origin}/login/callback`,
     });
   }, [vincentWebAuthClient]);
 
@@ -34,20 +36,34 @@ export const useBackend = () => {
       // Add JWT token if available
       if (authInfo?.jwt) {
         headers.Authorization = `Bearer ${authInfo.jwt}`;
+      } else if (typeof window !== 'undefined') {
+        // Fallback to Vincent JWT stored locally by callback handler
+        const storedJwt = localStorage.getItem('VINCENT_AUTH_JWT');
+        if (storedJwt) {
+          headers.Authorization = `Bearer ${storedJwt}`;
+        }
       }
 
-      const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}${endpoint}`, {
-        method,
-        headers,
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
+      try {
+        const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}${endpoint}`, {
+          method,
+          headers,
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        return response.json() as T;
+      } catch (error) {
+        // Handle network errors or backend not running
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          throw new Error('Backend server is not running. Please start the backend server.');
+        }
+        throw error;
       }
-
-      return response.json() as T;
     },
     [authInfo]
   );
