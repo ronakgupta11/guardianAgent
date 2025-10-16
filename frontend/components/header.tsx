@@ -4,11 +4,13 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { WalletChip } from "@/components/wallet-chip"
 import { useDemoMode } from "@/providers/demo-mode"
-import { Bot, Brain, Shield } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import { Bot, Brain, Shield, LogOut, User } from "lucide-react"
 import { motion } from "framer-motion"
 
 export function Header() {
   const { demo, toggleDemo } = useDemoMode()
+  const { user, isAuthenticated, logout } = useAuth()
   return (
     <header className="border-b border-primary/20 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/80 relative">
       {/* AI Scan Line Effect */}
@@ -29,23 +31,50 @@ export function Header() {
         </Link>
         
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="/dashboard" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group">
-            <Shield className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            Dashboard
-          </Link>
-          <Link href="/ai" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group">
-            <Brain className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            AI Assistant
-          </Link>
-          <Link href="/profile" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-            Profile
-          </Link>
-          <Link href="/settings" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-            Settings
-          </Link>
+          {isAuthenticated && (
+            <>
+              <Link href="/dashboard" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group">
+                <Shield className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                Dashboard
+              </Link>
+              <Link href="/ai" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group">
+                <Brain className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                AI Assistant
+              </Link>
+              <Link href="/profile" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                Profile
+              </Link>
+              <Link href="/settings" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                Settings
+              </Link>
+            </>
+          )}
         </nav>
         
         <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="w-4 h-4" />
+                <span className="hidden sm:inline">{user?.name}</span>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={logout}
+                className="border-primary/50 text-primary hover:bg-primary/10"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">
+                <Link href="/login">Login</Link>
+              </Button>
+            </>
+          )}
+          
           <Button 
             variant={demo ? "default" : "outline"} 
             onClick={toggleDemo} 

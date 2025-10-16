@@ -7,6 +7,7 @@ import { HealthRing } from "@/components/health-ring"
 import { PositionsTable } from "@/components/positions-table"
 import { DemoBanner } from "@/providers/demo-mode"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { motion } from "framer-motion"
 import { 
   Activity, 
@@ -19,10 +20,15 @@ import {
   AlertTriangle
 } from "lucide-react"
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url, {
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('jwt')}`,
+    'Content-Type': 'application/json',
+  }
+}).then((r) => r.json())
 
-export default function DashboardPage() {
-  const { data, error, isLoading, mutate } = useSWR("/api/mock/positions", fetcher)
+function DashboardContent() {
+  const { data, error, isLoading, mutate } = useSWR("/api/v1/positions/", fetcher)
 
   if (error) return <div className="p-6">Failed to load positions.</div>
 
@@ -90,7 +96,7 @@ export default function DashboardPage() {
                       transition={{ duration: 0.6, delay: 0.3 }}
                       className="flex flex-col items-center gap-6"
                     >
-                      <HealthRing healthFactor={data?.totals?.healthFactor ?? 1.5} size={200} />
+                      <HealthRing healthFactor={data?.average_health_factor ?? 1.5} size={200} />
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground">AI Risk Assessment</p>
                         <p className="text-xs text-primary">Neural Network Active</p>
@@ -123,19 +129,19 @@ export default function DashboardPage() {
                   <AIStat 
                     icon={<TrendingUp className="w-6 h-6" />}
                     label="Net Value" 
-                    value={`$${(data?.totals?.netValue ?? 0).toLocaleString()}`}
+                    value={`$${(data?.net_value_usd ?? 0).toLocaleString()}`}
                     gradient="from-green-500 to-emerald-600"
                   />
                   <AIStat 
                     icon={<Shield className="w-6 h-6" />}
                     label="Collateral" 
-                    value={`$${(data?.totals?.collateral ?? 0).toLocaleString()}`}
+                    value={`$${(data?.total_collateral_usd ?? 0).toLocaleString()}`}
                     gradient="from-blue-500 to-cyan-600"
                   />
                   <AIStat 
                     icon={<AlertTriangle className="w-6 h-6" />}
                     label="Debt" 
-                    value={`$${(data?.totals?.debt ?? 0).toLocaleString()}`}
+                    value={`$${(data?.total_borrowed_usd ?? 0).toLocaleString()}`}
                     gradient="from-orange-500 to-red-600"
                   />
                 </CardContent>
@@ -207,5 +213,13 @@ function AIStat({
         <div className="text-2xl font-bold text-primary">{value}</div>
       </div>
     </motion.div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   )
 }
