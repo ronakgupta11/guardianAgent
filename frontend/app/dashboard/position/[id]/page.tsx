@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import useSWR from "swr"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,19 +15,22 @@ import {
   TrendingUp, 
   Brain, 
   Zap,
-  Activity
+  Activity,
+  Wallet
 } from "lucide-react"
 import Link from "next/link"
-import type { Position } from "@/lib/types"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { useAaveData } from "@/hooks/useAaveData"
+import { useAccount } from 'wagmi'
+import type { AavePosition } from "@/hooks/useAaveData"
 
 export default function PositionDetailPage() {
   const params = useParams<{ id: string }>()
-  const { data } = useSWR("/api/mock/positions", fetcher)
-  const position: Position | undefined = useMemo(
-    () => data?.positions?.find((p: Position) => String(p.id) === String(params.id)),
-    [data, params.id],
+  const { address, isConnected } = useAccount()
+  const { data: aaveData, isLoading, error } = useAaveData()
+  
+  const position: AavePosition | undefined = useMemo(
+    () => aaveData?.positions?.find((p: AavePosition) => String(p.id) === String(params.id)),
+    [aaveData, params.id],
   )
 
   const [simHF, setSimHF] = useState<number | null>(null)
@@ -36,11 +38,34 @@ export default function PositionDetailPage() {
   const hf = simHF ?? position?.healthFactor ?? 1.5
 
   const spark = useMemo(
-    () => (position?.sparkline ?? [1, 0.98, 1.02, 0.97, 1.01, 0.99, 1]).map((v, i) => ({ x: i, y: v })),
-    [position],
+    () => [1, 0.98, 1.02, 0.97, 1.01, 0.99, 1].map((v, i) => ({ x: i, y: v })),
+    [],
   )
 
-  if (!position) return <div className="p-6">Loading position…</div>
+  if (error) return <div className="p-6">Failed to load position data.</div>
+  
+  if (!isConnected || !address) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <Wallet className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Connect Your Wallet</h2>
+            <p className="text-muted-foreground mb-4">
+              Please connect your wallet to view position details.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Refresh Page
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (isLoading) return <div className="p-6">Loading position…</div>
+  
+  if (!position) return <div className="p-6">Position not found.</div>
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -73,7 +98,7 @@ export default function PositionDetailPage() {
                 Position Management
               </h1>
               <p className="text-muted-foreground mt-2">
-                {position.protocol} — {position.market} • AI-powered risk analysis
+                {position.protocol} — {position.chainName} • AI-powered risk analysis
               </p>
             </div>
             <div className="text-right">
@@ -155,11 +180,78 @@ export default function PositionDetailPage() {
             </motion.div>
           </div>
 
-          {/* Simulation Section */}
+          {/* Position Details */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
+          >
+            <Card className="bg-card border-primary/20 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <Activity className="w-5 h-5" />
+                  Position Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8">
+                <div className="grid md:grid-cols-2 gap-8">
+                  {/* Collateral Tokens */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-green-600">Collateral</h3>
+                    {position.collateralTokens.length > 0 ? (
+                      <div className="space-y-3">
+                        {position.collateralTokens.map((token, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div>
+                              <div className="font-medium">{token.symbol}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {token.amount.toFixed(4)} {token.symbol}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold">${token.usdValue.toLocaleString()}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No collateral tokens</p>
+                    )}
+                  </div>
+
+                  {/* Borrowed Tokens */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-red-600">Debt</h3>
+                    {position.borrowedTokens.length > 0 ? (
+                      <div className="space-y-3">
+                        {position.borrowedTokens.map((token, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                            <div>
+                              <div className="font-medium">{token.symbol}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {token.amount.toFixed(4)} {token.symbol}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold">${token.usdValue.toLocaleString()}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No borrowed tokens</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Simulation Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
           >
             <Card className="bg-card border-primary/20 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardHeader>
@@ -177,8 +269,8 @@ export default function PositionDetailPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="text-sm text-muted-foreground">
                     <div className="flex items-center gap-4">
-                      <span>Collateral: <strong>${position.collateralUSD.toLocaleString()}</strong></span>
-                      <span>Debt: <strong>${position.debtUSD.toLocaleString()}</strong></span>
+                      <span>Collateral: <strong>${position.collateralUsd.toLocaleString()}</strong></span>
+                      <span>Debt: <strong>${position.borrowedUsd.toLocaleString()}</strong></span>
                     </div>
                   </div>
                   <Button 
@@ -197,7 +289,16 @@ export default function PositionDetailPage() {
         <AIPlanModal
           open={planOpen}
           onOpenChange={setPlanOpen}
-          position={position}
+          position={{
+            id: position.id,
+            protocol: position.protocol,
+            market: position.chainName,
+            collateralUSD: position.collateralUsd,
+            debtUSD: position.borrowedUsd,
+            ltv: position.ltv,
+            healthFactor: position.healthFactor,
+            sparkline: [1, 0.98, 1.02, 0.97, 1.01, 0.99, 1]
+          }}
           onSuccess={() => {
             // Optionally trigger a refetch upstream if needed
           }}
