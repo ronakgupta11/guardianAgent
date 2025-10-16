@@ -20,19 +20,21 @@ app = FastAPI(
 )
 
 # CORS middleware
+cors_origins = settings.ALLOWED_HOSTS if not settings.DEBUG else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_HOSTS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Trusted host middleware
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS
-)
+# Trusted host middleware - only in production
+if not settings.DEBUG:
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.ALLOWED_HOSTS
+    )
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
