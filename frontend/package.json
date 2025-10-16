@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aave/react": "^0.7.0",
     "@ai-sdk/react": "2.0.71",
     "@avail-project/nexus-core": "^0.0.1",
     "@avail-project/nexus-widgets": "^0.0.5",

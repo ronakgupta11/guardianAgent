@@ -1,6 +1,5 @@
 "use client"
 
-import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { HealthRing } from "@/components/health-ring"
@@ -8,6 +7,8 @@ import { PositionsTable } from "@/components/positions-table"
 import { DemoBanner } from "@/providers/demo-mode"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
+import { useAaveData } from "@/hooks/useAaveData"
+import { useAccount } from 'wagmi'
 import { motion } from "framer-motion"
 import { 
   Activity, 
@@ -17,29 +18,34 @@ import {
   Zap, 
   RefreshCw,
   Eye,
-  AlertTriangle
+  AlertTriangle,
+  Wallet
 } from "lucide-react"
 
-const fetcher = (url: string) => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  
-  // Only add Authorization header if we're on client side and have a token
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('jwt');
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  
-  return fetch(url, { headers }).then((r) => r.json());
-}
-
 function DashboardContent() {
-  const { data, error, isLoading, mutate } = useSWR("/api/v1/positions/", fetcher)
+  const { address, isConnected } = useAccount()
+  const { data, isLoading, error, mutate } = useAaveData()
 
   if (error) return <div className="p-6">Failed to load positions.</div>
+
+  if (!isConnected || !address) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <Wallet className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Connect Your Wallet</h2>
+            <p className="text-muted-foreground mb-4">
+              Please connect your wallet to view your Aave positions and health factor.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Refresh Page
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -105,7 +111,7 @@ function DashboardContent() {
                       transition={{ duration: 0.6, delay: 0.3 }}
                       className="flex flex-col items-center gap-6"
                     >
-                      <HealthRing healthFactor={data?.average_health_factor ?? 1.5} size={200} />
+                      <HealthRing healthFactor={data?.averageHealthFactor ?? 1.5} size={200} />
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground">AI Risk Assessment</p>
                         <p className="text-xs text-primary">Neural Network Active</p>
@@ -138,19 +144,19 @@ function DashboardContent() {
                   <AIStat 
                     icon={<TrendingUp className="w-6 h-6" />}
                     label="Net Value" 
-                    value={`$${(data?.net_value_usd ?? 0).toLocaleString()}`}
+                    value={`$${(data?.netValueUsd ?? 0).toLocaleString()}`}
                     gradient="from-green-500 to-emerald-600"
                   />
                   <AIStat 
                     icon={<Shield className="w-6 h-6" />}
                     label="Collateral" 
-                    value={`$${(data?.total_collateral_usd ?? 0).toLocaleString()}`}
+                    value={`$${(data?.totalCollateralUsd ?? 0).toLocaleString()}`}
                     gradient="from-blue-500 to-cyan-600"
                   />
                   <AIStat 
                     icon={<AlertTriangle className="w-6 h-6" />}
                     label="Debt" 
-                    value={`$${(data?.total_borrowed_usd ?? 0).toLocaleString()}`}
+                    value={`$${(data?.totalBorrowedUsd ?? 0).toLocaleString()}`}
                     gradient="from-orange-500 to-red-600"
                   />
                 </CardContent>
