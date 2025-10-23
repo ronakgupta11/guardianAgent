@@ -76,26 +76,6 @@ POST /api/v1/auth/login       # Login with wallet
 POST /api/v1/auth/verify-token # Verify JWT token
 ```
 
-### Users
-```
-GET  /api/v1/users/me         # Get current user
-PUT  /api/v1/users/me         # Update current user
-```
-
-### Positions
-```
-GET  /api/v1/positions/       # Get user positions
-POST /api/v1/positions/discover # Discover new positions
-GET  /api/v1/positions/{id}   # Get specific position
-```
-
-### Alerts
-```
-GET  /api/v1/alerts/          # Get user alerts
-GET  /api/v1/alerts/active    # Get active alerts only
-POST /api/v1/alerts/{id}/resolve # Resolve alert
-```
-
 ## Testing the API
 
 ### 1. Register a User
@@ -118,9 +98,9 @@ curl -X POST "http://localhost:8000/api/v1/auth/login" \
   }'
 ```
 
-### 3. Get Positions (with JWT token)
+### 3. Get User Info (with JWT token)
 ```bash
-curl -X GET "http://localhost:8000/api/v1/positions/" \
+curl -X GET "http://localhost:8000/api/v1/auth/verify-token" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -139,31 +119,6 @@ The frontend `useBackend` hook should work with the new API endpoints.
 ### Users Table
 - `id`, `name`, `email`, `wallet_address`, `vincent_id`
 - `is_active`, `created_at`, `updated_at`
-
-### Positions Table  
-- `id`, `user_id`, `chain_id`, `chain_name`, `protocol`
-- `collateral_tokens`, `borrowed_tokens`, `collateral_usd`, `borrowed_usd`
-- `health_factor`, `ltv`, `position_address`, `last_updated`
-
-### Alerts Table
-- `id`, `user_id`, `chain_id`, `chain_name`, `protocol`
-- `alert_type`, `severity`, `message`, `health_factor`
-- `is_resolved`, `resolved_at`, `created_at`
-
-## Background Monitoring
-
-The system includes background monitoring that:
-
-1. **Updates positions** every 2 minutes (configurable)
-2. **Checks health factors** and creates alerts
-3. **Resolves stale alerts** when positions improve
-
-To start background monitoring (optional):
-```python
-from app.tasks.monitoring import start_background_monitoring
-import asyncio
-asyncio.run(start_background_monitoring())
-```
 
 ## Troubleshooting
 

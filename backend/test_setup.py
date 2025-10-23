@@ -19,21 +19,14 @@ def test_imports():
         from app.core.database import get_db, Base
         print("✅ Database modules imported successfully")
         
-        from app.models import User, Position, Alert
+        from app.models import User
         print("✅ Models imported successfully")
         
-        from app.schemas import UserCreate, PositionResponse, AlertResponse
+        from app.schemas import UserCreate, UserResponse
         print("✅ Schemas imported successfully")
         
         from app.api.v1.api import api_router
         print("✅ API router imported successfully")
-        
-        from app.services.blockscout_service import BlockscoutService
-        from app.services.alert_service import AlertService
-        print("✅ Services imported successfully")
-        
-        from app.tasks.monitoring import PositionMonitor
-        print("✅ Background tasks imported successfully")
         
         return True
         
@@ -51,12 +44,9 @@ def test_config():
         # Test required settings
         assert hasattr(settings, 'DATABASE_URL'), "DATABASE_URL not found"
         assert hasattr(settings, 'SECRET_KEY'), "SECRET_KEY not found"
-        assert hasattr(settings, 'SUPPORTED_CHAINS'), "SUPPORTED_CHAINS not found"
         
         print("✅ Configuration loaded successfully")
         print(f"   - Database URL: {settings.DATABASE_URL[:20]}...")
-        print(f"   - Supported chains: {len(settings.SUPPORTED_CHAINS)}")
-        print(f"   - Health factor warning: {settings.HEALTH_FACTOR_WARNING}")
         
         return True
         
@@ -69,21 +59,13 @@ def test_models():
     print("\n🧪 Testing models...")
     
     try:
-        from app.models import User, Position, Alert
+        from app.models import User
         from app.core.database import Base
         
         # Check that models have required attributes
         user_attrs = ['id', 'name', 'email', 'wallet_address', 'vincent_id']
         for attr in user_attrs:
             assert hasattr(User, attr), f"User missing attribute: {attr}"
-        
-        position_attrs = ['id', 'user_id', 'chain_id', 'health_factor', 'collateral_usd']
-        for attr in position_attrs:
-            assert hasattr(Position, attr), f"Position missing attribute: {attr}"
-        
-        alert_attrs = ['id', 'user_id', 'alert_type', 'severity', 'message']
-        for attr in alert_attrs:
-            assert hasattr(Alert, attr), f"Alert missing attribute: {attr}"
         
         print("✅ All models have required attributes")
         return True
