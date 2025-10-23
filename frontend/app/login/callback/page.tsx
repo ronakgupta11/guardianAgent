@@ -36,6 +36,10 @@ export default function VincentCallbackPage() {
             const result = await vincentAppClient.decodeVincentJWTFromUri(env.NEXT_PUBLIC_EXPECTED_AUDIENCE);
             console.log('🎫 JWT decoded successfully',result);
 
+            if (!result) {
+              throw new Error('Failed to decode JWT');
+            }
+
             const {decodedJWT:decoded, jwtStr:jwt} = result;
 
             console.log('📋 Decoded JWT payload:', decoded);
@@ -69,12 +73,47 @@ export default function VincentCallbackPage() {
                 router.replace('/login');
                 return;
               }
+            } else {
+              // Existing user - login with backend to get JWT
+              try {
+                console.log('🔐 Logging in existing user with backend...');
+                console.log('🔍 Decoded JWT structure:', decoded);
+                const walletAddress = (decoded as any).address || (decoded as any).wallet_address || (decoded as any).sub; // Try different possible fields
+                console.log('👛 Wallet address from JWT:', walletAddress);
+                
+                const loginResponse = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/login`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ wallet_address: walletAddress }),
+                });
+
+                if (loginResponse.ok) {
+                  const loginData = await loginResponse.json();
+                  console.log('🔐 Backend login successful:', loginData);
+                  
+                  // Store backend JWT
+                  if (loginData.access_token && typeof window !== 'undefined') {
+                    localStorage.setItem('GUARDIAN_BACKEND_JWT', loginData.access_token);
+                    console.log('✅ Backend JWT stored in localStorage');
+                  }
+                } else {
+                  console.error('❌ Backend login failed:', await loginResponse.text());
+                  router.replace('/login');
+                  return;
+                }
+              } catch (error) {
+                console.error('❌ Failed to login with backend:', error);
+                router.replace('/login');
+                return;
+              }
             }
             
             console.log('🏠 Redirecting to dashboard');
             // Redirect to dashboard
             router.replace('/dashboard')
-          } catch (jwtError) {
+          } catch (jwtError: any) {
             console.error('❌ Failed to decode Vincent JWT:', jwtError)
             console.error('🔍 JWT Error details:', {
               message: jwtError.message,
@@ -92,7 +131,7 @@ export default function VincentCallbackPage() {
           console.log('💾 Stored JWT found:', !!jwt);
           
           if (jwt) {
-            const expired = isExpired(jwt);
+            const expired = isExpired(jwt as any);
             console.log('⏰ JWT expired:', expired);
             
             if (expired) {
@@ -112,10 +151,47 @@ export default function VincentCallbackPage() {
 
           console.log('✅ Valid JWT found, redirecting to dashboard');
           // JWT exists and is not expired, verify with backend and redirect to dashboard
-          // await verifyToken()
+          // Check if we have a backend JWT
+          const backendJwt = localStorage.getItem('GUARDIAN_BACKEND_JWT');
+          if (!backendJwt) {
+            console.log('🔐 No backend JWT found, logging in with backend...');
+            try {
+              // Extract wallet address from Vincent JWT
+              const decoded = JSON.parse(atob(jwt.split('.')[1]));
+              const walletAddress = decoded.address || decoded.wallet_address || decoded.sub;
+              console.log('👛 Wallet address from stored JWT:', walletAddress);
+              
+              const loginResponse = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/login`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ wallet_address: walletAddress }),
+              });
+
+              if (loginResponse.ok) {
+                const loginData = await loginResponse.json();
+                console.log('🔐 Backend login successful:', loginData);
+                
+                // Store backend JWT
+                if (loginData.access_token && typeof window !== 'undefined') {
+                  localStorage.setItem('GUARDIAN_BACKEND_JWT', loginData.access_token);
+                  console.log('✅ Backend JWT stored in localStorage');
+                }
+              } else {
+                console.error('❌ Backend login failed:', await loginResponse.text());
+                router.replace('/login');
+                return;
+              }
+            } catch (error) {
+              console.error('❌ Failed to login with backend:', error);
+              router.replace('/login');
+              return;
+            }
+          }
           router.replace('/dashboard')
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('💥 Vincent callback error:', error)
         console.error('🔍 Error details:', {
           message: error.message,

@@ -19,23 +19,23 @@ import {
   Wallet
 } from "lucide-react"
 import Link from "next/link"
-import { useAaveData } from "@/hooks/useAaveData"
+import { usePositions } from "@/hooks/usePositions"
 import { useAccount } from 'wagmi'
-import type { AavePosition } from "@/hooks/useAaveData"
+import type { Position } from "@/hooks/usePositions"
 
 export default function PositionDetailPage() {
   const params = useParams<{ id: string }>()
   const { address, isConnected } = useAccount()
-  const { data: aaveData, isLoading, error } = useAaveData()
+  const { data: positionsData, isLoading, error } = usePositions()
   
-  const position: AavePosition | undefined = useMemo(
-    () => aaveData?.positions?.find((p: AavePosition) => String(p.id) === String(params.id)),
-    [aaveData, params.id],
+  const position: Position | undefined = useMemo(
+    () => positionsData?.positions?.find((p: Position) => String(p.id) === String(params.id)),
+    [positionsData, params.id],
   )
 
   const [simHF, setSimHF] = useState<number | null>(null)
   const [planOpen, setPlanOpen] = useState(false)
-  const hf = simHF ?? position?.healthFactor ?? 1.5
+  const hf = simHF ?? position?.health_factor ?? 1.5
 
   const spark = useMemo(
     () => [1, 0.98, 1.02, 0.97, 1.01, 0.99, 1].map((v, i) => ({ x: i, y: v })),
@@ -98,12 +98,16 @@ export default function PositionDetailPage() {
                 Position Management
               </h1>
               <p className="text-muted-foreground mt-2">
-                {position.protocol} — {position.chainName} • AI-powered risk analysis
+                Aave — {position.chain_name} • AI-powered risk analysis
               </p>
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">LTV</div>
-              <div className="text-2xl font-bold text-primary">{Math.round(position.ltv * 100)}%</div>
+              <div className="text-2xl font-bold text-primary">
+                {position.total_collateral_usd > 0 
+                  ? Math.round((position.total_borrowed_usd / position.total_collateral_usd) * 100) 
+                  : 0}%
+              </div>
             </div>
           </div>
         </motion.div>
@@ -198,18 +202,18 @@ export default function PositionDetailPage() {
                   {/* Collateral Tokens */}
                   <div>
                     <h3 className="text-lg font-semibold mb-4 text-green-600">Collateral</h3>
-                    {position.collateralTokens.length > 0 ? (
+                    {position.supplied_assets && position.supplied_assets.length > 0 ? (
                       <div className="space-y-3">
-                        {position.collateralTokens.map((token, index) => (
+                        {position.supplied_assets.map((token: any, index: number) => (
                           <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                             <div>
-                              <div className="font-medium">{token.symbol}</div>
+                              <div className="font-medium">{token.token}</div>
                               <div className="text-sm text-muted-foreground">
-                                {token.amount.toFixed(4)} {token.symbol}
+                                {token.amount.toFixed(4)} {token.token}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-semibold">${token.usdValue.toLocaleString()}</div>
+                              <div className="font-semibold">${token.usd_value?.toLocaleString() || '0'}</div>
                             </div>
                           </div>
                         ))}
@@ -222,18 +226,18 @@ export default function PositionDetailPage() {
                   {/* Borrowed Tokens */}
                   <div>
                     <h3 className="text-lg font-semibold mb-4 text-red-600">Debt</h3>
-                    {position.borrowedTokens.length > 0 ? (
+                    {position.borrowed_assets && position.borrowed_assets.length > 0 ? (
                       <div className="space-y-3">
-                        {position.borrowedTokens.map((token, index) => (
+                        {position.borrowed_assets.map((token: any, index: number) => (
                           <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                             <div>
-                              <div className="font-medium">{token.symbol}</div>
+                              <div className="font-medium">{token.token}</div>
                               <div className="text-sm text-muted-foreground">
-                                {token.amount.toFixed(4)} {token.symbol}
+                                {token.amount.toFixed(4)} {token.token}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-semibold">${token.usdValue.toLocaleString()}</div>
+                              <div className="font-semibold">${token.usd_value?.toLocaleString() || '0'}</div>
                             </div>
                           </div>
                         ))}
@@ -269,8 +273,8 @@ export default function PositionDetailPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="text-sm text-muted-foreground">
                     <div className="flex items-center gap-4">
-                      <span>Collateral: <strong>${position.collateralUsd.toLocaleString()}</strong></span>
-                      <span>Debt: <strong>${position.borrowedUsd.toLocaleString()}</strong></span>
+                      <span>Collateral: <strong>${position.total_collateral_usd.toLocaleString()}</strong></span>
+                      <span>Debt: <strong>${position.total_borrowed_usd.toLocaleString()}</strong></span>
                     </div>
                   </div>
                   <Button 
@@ -291,12 +295,14 @@ export default function PositionDetailPage() {
           onOpenChange={setPlanOpen}
           position={{
             id: position.id,
-            protocol: position.protocol,
-            market: position.chainName,
-            collateralUSD: position.collateralUsd,
-            debtUSD: position.borrowedUsd,
-            ltv: position.ltv,
-            healthFactor: position.healthFactor,
+            protocol: 'Aave',
+            market: position.chain_name,
+            collateralUSD: position.total_collateral_usd,
+            debtUSD: position.total_borrowed_usd,
+            ltv: position.total_collateral_usd > 0 
+              ? position.total_borrowed_usd / position.total_collateral_usd 
+              : 0,
+            healthFactor: position.health_factor,
             sparkline: [1, 0.98, 1.02, 0.97, 1.01, 0.99, 1]
           }}
           onSuccess={() => {

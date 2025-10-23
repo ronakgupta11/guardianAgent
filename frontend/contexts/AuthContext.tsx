@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAccount } from 'wagmi';
-import { useJwtContext } from '@lit-protocol/vincent-app-sdk/react';
 import { useBackend } from '@/hooks/useBackend';
 
 interface User {
@@ -21,9 +20,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (walletAddress: string) => Promise<void>;
-  register: (userData: { name: string; email: string; wallet_address: string; vincent_id?: string }) => Promise<void>;
+  register: (userData: { name: string; email: string; wallet_address: string }) => Promise<User>;
   logout: () => void;
-  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,53 +41,35 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const { address, isConnected } = useAccount();
-  const { authInfo } = useJwtContext();
   const { loginUser, registerUser, getCurrentUser, verifyToken } = useBackend();
 
   const isAuthenticated = !!user;
 
-  // Check authentication status on mount and when authInfo changes
+  // Set client flag on mount
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Check authentication status on mount
+  useEffect(() => {
+    if (!isClient) return;
+
     const checkAuth = async () => {
       setIsLoading(true);
       try {
-        if (authInfo?.jwt) {
-          // For Vincent JWTs, we don't need to verify with backend
-          // The JWT itself is proof of authentication
-          // Just check if we have a stored user from registration
-          if (typeof window !== 'undefined') {
-            const storedUser = localStorage.getItem('guardian_user');
-            if (storedUser) {
-              try {
-                setUser(JSON.parse(storedUser));
-              } catch (e) {
-                localStorage.removeItem('guardian_user');
-                setUser(null);
-              }
-            } else {
-              setUser(null);
-            }
-          } else {
+        // Check if we have a stored user from localStorage
+        const storedUser = localStorage.getItem('guardian_user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (e) {
+            localStorage.removeItem('guardian_user');
             setUser(null);
           }
         } else {
-          // If no JWT token, check if we have a user in localStorage as fallback
-          if (typeof window !== 'undefined') {
-            const storedUser = localStorage.getItem('guardian_user');
-            if (storedUser) {
-              try {
-                setUser(JSON.parse(storedUser));
-              } catch (e) {
-                localStorage.removeItem('guardian_user');
-                setUser(null);
-              }
-            } else {
-              setUser(null);
-            }
-          } else {
-            setUser(null);
-          }
+          setUser(null);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -99,45 +79,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      checkAuth();
-    } else {
-      setIsLoading(false);
-    }
-  }, [authInfo?.jwt, verifyToken]);
+    checkAuth();
+  }, [isClient]);
 
   const login = async (walletAddress: string) => {
     try {
       setIsLoading(true);
-      const response = await loginUser(walletAddress);
+      const response = await loginUser(walletAddress) as { access_token: string; user: User };
       
-      // Store the JWT token (Vincent SDK handles this)
+      // Store the JWT token and user data
       if (response.access_token) {
-        // The JWT will be handled by Vincent SDK
         setUser(response.user);
-        // Also store user in localStorage as fallback
-        if (typeof window !== 'undefined') {
+        // Store user in localStorage as fallback
+        if (isClient) {
           localStorage.setItem('guardian_user', JSON.stringify(response.user));
+          
+          // Verify JWT was stored by useBackend.loginUser, if not store it manually
+          if (!localStorage.getItem('GUARDIAN_BACKEND_JWT')) {
+            localStorage.setItem('GUARDIAN_BACKEND_JWT', response.access_token);
+          }
         }
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('❌ AuthContext: Login failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (userData: { name: string; email: string; wallet_address: string; vincent_id?: string }) => {
+  const register = async (userData: { name: string; email: string; wallet_address: string }) => {
     try {
       setIsLoading(true);
-      const newUser = await registerUser(userData);
+      const newUser = await registerUser(userData) as User;
       setUser(newUser);
       // Store user in localStorage as fallback
-      if (typeof window !== 'undefined') {
+      if (isClient) {
         localStorage.setItem('guardian_user', JSON.stringify(newUser));
       }
+      return newUser;
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -149,21 +129,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     // Clear localStorage
-    if (typeof window !== 'undefined') {
+    if (isClient) {
       localStorage.removeItem('guardian_user');
-    }
-    // Vincent SDK will handle JWT cleanup
-  };
-
-  const refreshUser = async () => {
-    if (!authInfo?.jwt) return;
-    
-    try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
-      setUser(null);
+      localStorage.removeItem('GUARDIAN_BACKEND_JWT');
     }
   };
 
@@ -174,7 +142,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
-    refreshUser,
   };
 
   return (

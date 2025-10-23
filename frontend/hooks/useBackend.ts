@@ -1,31 +1,11 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useJwtContext, useVincentWebAuthClient } from '@lit-protocol/vincent-app-sdk/react';
 import { env } from '@/lib/env';
-
 
 type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 export const useBackend = () => {
-  const { authInfo } = useJwtContext();
-  const vincentWebAuthClient = useVincentWebAuthClient(env.NEXT_PUBLIC_APP_ID);
-  
-  // Temporary mock data for testing
-//   const authInfo = { jwt: null };
-//   const vincentWebAuthClient = {
-//     redirectToConnectPage: (options: any) => {
-//       console.log('Mock redirect to connect page:', options);
-//     }
-//   };
-
-  const getJwt = useCallback(() => {
-    vincentWebAuthClient.redirectToConnectPage({
-      // Redirect to dedicated callback route so we can finalize auth
-      // per Vincent docs: redirectToConnectPage -> app gets JWT in URL
-      redirectUri: env.NEXT_PUBLIC_REDIRECT_URI || `${window.location.origin}/login/callback`,
-    });
-  }, [vincentWebAuthClient]);
 
   const sendRequest = useCallback(
     async <T>(endpoint: string, method: HTTPMethod, body?: unknown): Promise<T> => {
@@ -33,14 +13,11 @@ export const useBackend = () => {
         'Content-Type': 'application/json',
       };
       
-      // Add JWT token if available
-      if (authInfo?.jwt) {
-        headers.Authorization = `Bearer ${authInfo.jwt}`;
-      } else if (typeof window !== 'undefined') {
-        // Fallback to Vincent JWT stored locally by callback handler
-        const storedJwt = localStorage.getItem('VINCENT_AUTH_JWT');
-        if (storedJwt) {
-          headers.Authorization = `Bearer ${storedJwt}`;
+      // Add backend JWT token if available
+      if (typeof window !== 'undefined') {
+        const backendJwt = localStorage.getItem('GUARDIAN_BACKEND_JWT');
+        if (backendJwt) {
+          headers.Authorization = `Bearer ${backendJwt}`;
         }
       }
 
@@ -65,12 +42,12 @@ export const useBackend = () => {
         throw error;
       }
     },
-    [authInfo]
+    []
   );
 
   // Authentication methods
   const registerUser = useCallback(
-    async (userData: { name: string; email: string; wallet_address: string; vincent_id?: string }) => {
+    async (userData: { name: string; email: string; wallet_address: string }) => {
       return sendRequest('/api/v1/auth/register', 'POST', userData);
     },
     [sendRequest]
@@ -78,9 +55,37 @@ export const useBackend = () => {
 
   const loginUser = useCallback(
     async (walletAddress: string) => {
-      return sendRequest('/api/v1/auth/login', 'POST', { wallet_address: walletAddress });
+      console.log('🔐 useBackend: Starting login request for:', walletAddress);
+      console.log('🔐 useBackend: Backend URL:', env.NEXT_PUBLIC_BACKEND_URL);
+      
+      // Call login endpoint directly without requiring auth
+      const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ wallet_address: walletAddress }),
+      });
+
+      console.log('🔐 useBackend: Response status:', response.status);
+      console.log('🔐 useBackend: Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('❌ useBackend: Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      // Store backend JWT token
+      if (data.access_token && typeof window !== 'undefined') {
+        localStorage.setItem('GUARDIAN_BACKEND_JWT', data.access_token);
+      }
+      
+      return data;
     },
-    [sendRequest]
+    []
   );
 
   const verifyToken = useCallback(
@@ -114,8 +119,8 @@ export const useBackend = () => {
   );
 
   const discoverPositions = useCallback(
-    async () => {
-      return sendRequest('/api/v1/positions/discover', 'POST');
+    async (chainIds: string[]) => {
+      return sendRequest('/api/v1/positions/discover', 'POST', chainIds);
     },
     [sendRequest]
   );
@@ -155,13 +160,18 @@ export const useBackend = () => {
     [sendRequest]
   );
 
+  const logout = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('GUARDIAN_BACKEND_JWT');
+    }
+  }, []);
+
   return {
     // Authentication
     registerUser,
     loginUser,
+    logout,
     verifyToken,
-    getJwt,
-    authInfo,
     
     // Users
     getCurrentUser,

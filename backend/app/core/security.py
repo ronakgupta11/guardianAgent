@@ -43,17 +43,28 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
+    print(f"🔍 Received token: {credentials.credentials[:50]}...")
+    
     payload = verify_token(credentials.credentials)
     if payload is None:
+        print("❌ Token verification failed")
         raise credentials_exception
+    
+    print(f"✅ Token verified, payload: {payload}")
     
     user_id: int = payload.get("sub")
     if user_id is None:
+        print("❌ No user_id in payload")
         raise credentials_exception
+    
+    print(f"🔍 Looking up user with ID: {user_id}")
     
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
+        print(f"❌ User not found with ID: {user_id}")
         raise credentials_exception
+    
+    print(f"✅ User found: {user.email}")
     
     return user
 

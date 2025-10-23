@@ -7,9 +7,10 @@ import { PositionsTable } from "@/components/positions-table"
 import { DemoBanner } from "@/providers/demo-mode"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
-import { useAaveData } from "@/hooks/useAaveData"
+import { usePositions } from "@/hooks/usePositions"
 import { useAccount } from 'wagmi'
 import { motion } from "framer-motion"
+import { useState } from "react"
 import { 
   Activity, 
   TrendingUp, 
@@ -19,12 +20,14 @@ import {
   RefreshCw,
   Eye,
   AlertTriangle,
-  Wallet
+  Wallet,
+  Search
 } from "lucide-react"
 
 function DashboardContent() {
   const { address, isConnected } = useAccount()
-  const { data, isLoading, error, mutate } = useAaveData()
+  const { data, isLoading, error, refetch, discover } = usePositions()
+  const [discovering, setDiscovering] = useState(false)
 
   if (error) return <div className="p-6">Failed to load positions.</div>
 
@@ -73,14 +76,34 @@ function DashboardContent() {
                 Real-time monitoring and AI-powered risk analysis
               </p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => mutate()}
-              className="border-primary/50 text-primary hover:bg-primary/10"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Data
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => refetch()}
+                className="border-primary/50 text-primary hover:bg-primary/10"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={async () => {
+                  setDiscovering(true);
+                  try {
+                    await discover(['11155111', '84532']); // Sepolia and Base Sepolia
+                  } catch (err) {
+                    console.error('Failed to discover positions:', err);
+                  } finally {
+                    setDiscovering(false);
+                  }
+                }}
+                disabled={discovering}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                {discovering ? 'Discovering...' : 'Discover Positions'}
+              </Button>
+            </div>
           </div>
         </motion.div>
 
@@ -111,7 +134,7 @@ function DashboardContent() {
                       transition={{ duration: 0.6, delay: 0.3 }}
                       className="flex flex-col items-center gap-6"
                     >
-                      <HealthRing healthFactor={data?.averageHealthFactor ?? 1.5} size={200} />
+                      <HealthRing healthFactor={data?.average_health_factor ?? 1.5} size={200} />
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground">AI Risk Assessment</p>
                         <p className="text-xs text-primary">Neural Network Active</p>
@@ -144,19 +167,19 @@ function DashboardContent() {
                   <AIStat 
                     icon={<TrendingUp className="w-6 h-6" />}
                     label="Net Value" 
-                    value={`$${(data?.netValueUsd ?? 0).toLocaleString()}`}
+                    value={`$${(data?.net_value_usd ?? 0).toLocaleString()}`}
                     gradient="from-green-500 to-emerald-600"
                   />
                   <AIStat 
                     icon={<Shield className="w-6 h-6" />}
                     label="Collateral" 
-                    value={`$${(data?.totalCollateralUsd ?? 0).toLocaleString()}`}
+                    value={`$${(data?.total_collateral_usd ?? 0).toLocaleString()}`}
                     gradient="from-blue-500 to-cyan-600"
                   />
                   <AIStat 
                     icon={<AlertTriangle className="w-6 h-6" />}
                     label="Debt" 
-                    value={`$${(data?.totalBorrowedUsd ?? 0).toLocaleString()}`}
+                    value={`$${(data?.total_borrowed_usd ?? 0).toLocaleString()}`}
                     gradient="from-orange-500 to-red-600"
                   />
                 </CardContent>

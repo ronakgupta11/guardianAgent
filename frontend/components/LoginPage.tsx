@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAccount } from 'wagmi';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBackend } from '@/hooks/useBackend';
 import ConnectWalletButton from '@/components/connect-button';
 import { motion } from 'framer-motion';
 import { 
@@ -27,9 +26,8 @@ export const LoginPage: React.FC = () => {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { login, register, isLoading: authLoading } = useAuth();
-  const { getJwt } = useBackend();
   
-  const [step, setStep] = useState<'wallet' | 'details' | 'vincent'>('wallet');
+  const [step, setStep] = useState<'wallet' | 'details'>('wallet');
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -40,7 +38,7 @@ export const LoginPage: React.FC = () => {
     if (isConnected && address) {
       setIsLoading(true);
       try {
-        // Try to login first (user might already exist)
+        // Direct backend login - no Vincent needed
         await login(address);
         toast({
           title: "Welcome back!",
@@ -49,7 +47,6 @@ export const LoginPage: React.FC = () => {
         router.push('/dashboard');
       } catch (error: any) {
         // If login fails, user doesn't exist, proceed with registration
-        console.log('User not found, proceeding with registration:', error.message);
         setStep('details');
       } finally {
         setIsLoading(false);
@@ -61,33 +58,29 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     if (!address) return;
 
-    // Store user data temporarily for after Vincent connection
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pending_user_data', JSON.stringify({
+    setIsLoading(true);
+    try {
+      // Direct backend registration - no Vincent needed
+      await register({
         name: formData.name,
         email: formData.email,
         wallet_address: address,
-      }));
-    }
-
-    toast({
-      title: "Ready for Vincent!",
-      description: "Now connect with Vincent to complete your registration.",
-    });
-
-    setStep('vincent');
-  };
-
-  const handleVincentConnect = async () => {
-    setIsLoading(true);
-    try {
-      // Redirect to Vincent - the callback will handle user creation
-      await getJwt();
-    } catch (error: any) {
-      console.error('Vincent connection failed:', error);
+      });
+      
+      // After successful registration, automatically log in the user
+      await login(address);
+      
       toast({
-        title: "Connection Error",
-        description: "Failed to connect with Vincent. Please try again.",
+        title: "Account created!",
+        description: "Successfully created your account and logged in.",
+      });
+      
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      toast({
+        title: "Registration Error",
+        description: error.message || "Failed to create account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -122,7 +115,6 @@ export const LoginPage: React.FC = () => {
               <CardDescription className="text-muted-foreground mt-2">
                 {step === 'wallet' && "Connect your wallet to login or create an account"}
                 {step === 'details' && "Create your account - we need some basic information"}
-                {step === 'vincent' && "Connect with Vincent for enhanced security"}
               </CardDescription>
             </div>
           </CardHeader>
@@ -130,20 +122,19 @@ export const LoginPage: React.FC = () => {
           <CardContent className="space-y-6">
             {/* Step Indicator */}
             <div className="flex items-center justify-center space-x-2">
-              {[1, 2, 3].map((stepNumber) => (
+              {[1, 2].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
                       (step === 'wallet' && stepNumber === 1) ||
-                      (step === 'details' && stepNumber <= 2) ||
-                      (step === 'vincent' && stepNumber <= 3)
+                      (step === 'details' && stepNumber <= 2)
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground'
                     }`}
                   >
                     {stepNumber}
                   </div>
-                  {stepNumber < 3 && (
+                  {stepNumber < 2 && (
                     <div className="w-8 h-px bg-border mx-2" />
                   )}
                 </div>
@@ -275,66 +266,6 @@ export const LoginPage: React.FC = () => {
                     )}
                   </Button>
                 </form>
-              </motion.div>
-            )}
-
-            {/* Step 3: Vincent Connection */}
-            {step === 'vincent' && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-4"
-              >
-                <div className="text-center space-y-2">
-                  <Shield className="w-12 h-12 text-primary mx-auto" />
-                  <h3 className="text-lg font-semibold">Connect with Vincent</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Vincent authentication is required to complete your registration
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-green-700 dark:text-green-300">
-                      Account created successfully
-                    </span>
-                  </div>
-
-                  <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                    <h4 className="font-medium text-sm">What is Vincent?</h4>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      <li>• Non-custodial authentication</li>
-                      <li>• Enhanced security for your account</li>
-                      <li>• Seamless wallet integration</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={handleVincentConnect}
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      Connect with Vincent
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground">
-                    Vincent authentication is required to continue
-                  </p>
-                </div>
               </motion.div>
             )}
           </CardContent>
