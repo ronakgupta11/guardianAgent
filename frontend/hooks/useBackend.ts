@@ -160,6 +160,32 @@ export const useBackend = () => {
     [sendRequest]
   );
 
+  const generateActions = useCallback(
+    async (chainIds: string[]) => {
+      return sendRequest<{
+        user_address: string;
+        positions_with_actions: Array<{
+          chain_id: string;
+          chain_name: string;
+          supplied_assets: Array<{ token: string; amount: number; usd_value?: number }>;
+          borrowed_assets: Array<{ token: string; amount: number; usd_value?: number }>;
+          health_factor: number;
+          risk_level: string;
+          actions?: Array<{
+            order: number;
+            action_type: string;
+            token: string;
+            amount: number;
+            reason: string;
+            src_chain_id?: string;
+            dst_chain_id?: string;
+          }>;
+        }>;
+      }>('/api/v1/actions/actions', 'POST', { chain_ids: chainIds });
+    },
+    [sendRequest]
+  );
+
   const logout = useCallback(() => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('GUARDIAN_BACKEND_JWT');
@@ -186,5 +212,8 @@ export const useBackend = () => {
     getAlerts,
     getActiveAlerts,
     resolveAlert,
+    
+    // Actions
+    generateActions,
   };
 };

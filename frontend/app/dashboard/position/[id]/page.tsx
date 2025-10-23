@@ -293,18 +293,7 @@ export default function PositionDetailPage() {
         <AIPlanModal
           open={planOpen}
           onOpenChange={setPlanOpen}
-          position={{
-            id: position.id,
-            protocol: 'Aave',
-            market: position.chain_name,
-            collateralUSD: position.total_collateral_usd,
-            debtUSD: position.total_borrowed_usd,
-            ltv: position.total_collateral_usd > 0 
-              ? position.total_borrowed_usd / position.total_collateral_usd 
-              : 0,
-            healthFactor: position.health_factor,
-            sparkline: [1, 0.98, 1.02, 0.97, 1.01, 0.99, 1]
-          }}
+          position={position}
           onSuccess={() => {
             // Optionally trigger a refetch upstream if needed
           }}
